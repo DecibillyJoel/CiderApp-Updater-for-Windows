@@ -1,7 +1,9 @@
+**Notice: Please support Cider** by donating, or by buying the MS App Store version. **Cider should not be considered a "free" app**, even if you could technically use it without supporting the developers.<br>
+
 # CiderApp Updater for Windows
  Updates Cider on startup (for Windows)<br>
  <br>
- **Notice: Please support Cider** by donating, or by buying the MS App Store version. **Cider should not be considered a "free" app**, even if you could technically use it without supporting the developers. That's just rude honestly. I only condone usage of this updater if you have already supported the Cider developers in some way, or if you truly intend to do so at a later time.<br>
+*I only condone usage of this updater if you have already supported the Cider developers in some way, or if you truly intend to do so at a later time.*<br>
 # Setup
  1) Download the latest version of Python from https://www.python.org/downloads/
  2) Download or git pull this repo to your machine<br>
