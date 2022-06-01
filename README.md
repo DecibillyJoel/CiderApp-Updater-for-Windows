@@ -5,10 +5,10 @@
  1) Download the latest version of Python from https://www.python.org/downloads/
  2) Download or git pull this repo to your machine<br>
  3) Run SETUP.bat<br>
- 4) Disable Cider's run on startup setting (General -> Open Cider On Startup)<br>
+ 4) Disable Cider's run on startup setting *(General -> Open Cider On Startup)*<br>
 <!-- numbered list breaker -->
 # Uninstall
  1) Run UNINSTALL.bat<br>
- 2) **(optional)**Delete the repo folder on your machine<br>
- 3) **(optional)**Disable Cider's run on startup setting (General -> Open Cider On Startup)
+ 2) **(optional)** Delete the repo folder on your machine<br>
+ 3) **(optional)** Re-enable Cider's run on startup setting *(General -> Open Cider On Startup)*
 <!-- numbered list breaker -->
