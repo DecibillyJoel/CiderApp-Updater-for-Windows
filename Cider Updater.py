@@ -31,33 +31,40 @@ def circleci_json():
     if pipelineListResponse.status_code != 200:
         raise Exception(f"[ERROR] CircleCI Pipelines List API returned status: {pipelineListResponse.status_code}")
     
-    pipelineID = pipelineListResponse.json()['items'][0]['id']
+    pipelineList = pipelineListResponse.json()['items']
+    for pipeline in pipelineList:
+        if pipeline['state'] == 'created':
+            
+            workflowListResponse = requests.get(f"https://circleci.com/api/v2/pipeline/{pipeline['id']}/workflow")
+            if workflowListResponse.status_code != 200:
+                raise Exception(f"[ERROR] CircleCI Workflows List API returned status: {workflowListResponse.status_code}")
+            
+            workflowList = workflowListResponse.json()['items']
+            for workflow in workflowList:
+                if workflow['status'] == 'success':
+                    
+                    jobListResponse = requests.get(f"https://circleci.com/api/v2/workflow/{workflow['id']}/job")
+                    if jobListResponse.status_code != 200:
+                        raise Exception(f"[ERROR] CircleCI Jobs List API returned status: {jobListResponse.status_code}")
+                    
+                    job = jobListResponse.json()['items'][-1]
+                    if job['name'] == 'release' and job['status'] == 'success':
+                        
+                        artifactsListResponse = requests.get(f"https://circleci.com/api/v2/project/gh/ciderapp/Cider/{job['job_number']}/artifacts")
+                        if jobListResponse.status_code != 200:
+                            raise Exception(f"[ERROR] CircleCI Artifacts List API returned status: {jobListResponse.status_code}")
+                        
+                        artifactsJSON = artifactsListResponse.json()
+                        
+                        working_dir = os.getcwd()
+                        with open(f'{working_dir}\Cider.json', 'w', encoding='utf-8') as f:
+                            json.dump(artifactsJSON, f, ensure_ascii=False, indent=4)
+                            f.close()
+                        
+                        latest_build = artifactsJSON['items'][3]['url']
+                        return latest_build, latest_build.split('/')[-1]
     
-    workflowListResponse = requests.get(f"https://circleci.com/api/v2/pipeline/{pipelineID}/workflow")
-    if workflowListResponse.status_code != 200:
-        raise Exception(f"[ERROR] CircleCI Workflows List API returned status: {workflowListResponse.status_code}")
-    
-    workflowID = workflowListResponse.json()['items'][0]['id']
-    
-    jobListResponse = requests.get(f"https://circleci.com/api/v2/workflow/{workflowID}/job")
-    if jobListResponse.status_code != 200:
-        raise Exception(f"[ERROR] CircleCI Jobs List API returned status: {jobListResponse.status_code}")
-    
-    jobNumber = jobListResponse.json()['items'][-1]['job_number']
-    
-    artifactsListResponse = requests.get(f"https://circleci.com/api/v2/project/gh/ciderapp/Cider/{jobNumber}/artifacts")
-    if jobListResponse.status_code != 200:
-        raise Exception(f"[ERROR] CircleCI Artifacts List API returned status: {jobListResponse.status_code}")
-    
-    artifactsJSON = artifactsListResponse.json()
-    
-    working_dir = os.getcwd()
-    with open(f'{working_dir}\Cider.json', 'w', encoding='utf-8') as f:
-        json.dump(artifactsJSON, f, ensure_ascii=False, indent=4)
-        f.close()
-        
-    latest_build = artifactsJSON['items'][3]['url']
-    return latest_build, latest_build.split('/')[-1]
+    raise Exception(f"[ERROR] CircleCI Pipelines List API returned no valid pipelines!")
 
 def directory_manager():
     working_dir = os.getcwd()
