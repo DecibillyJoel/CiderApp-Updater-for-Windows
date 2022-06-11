@@ -1,5 +1,4 @@
-import os, requests, json
-from datetime import datetime
+import re, os, requests, json
 
 def updater():
     os.system('taskkill /f /im Cider.exe > nul 2>&1')
@@ -8,13 +7,13 @@ def updater():
     working_dir = directory_manager()
     
     print("[INFO] Finding latest Cider release...")
-    cider_link, exe_name = github_json()
+    cider_link, exe_name = circleci_json()
     print("[INFO] Found latest Cider release.")
     
     print("[INFO] Downloading Cider installer...")
     cider_exe = requests.get(cider_link, stream=True)
     if cider_exe.status_code != 200:
-        raise Exception(f"[ERROR] GitHub Asset Download returned status: {cider_exe.status_code}")
+        raise Exception(f"[ERROR] CircleCI Artifact Download returned status: {cider_exe.status_code}")
     
     with open(f'{working_dir}\{exe_name}', 'wb') as f:
         for chunk in cider_exe.iter_content(chunk_size=1024*8):
@@ -26,32 +25,38 @@ def updater():
     print("[INFO] Launching Cider installer...")
     # os.system(f'{working_dir}\{exe_name} /S')
     os.system(f'powershell -command "Set-Location -Path \'{working_dir}\'; .\{exe_name}')
+
+def circleci_json():
+    pipelineListResponse = requests.get("https://circleci.com/api/v2/project/gh/ciderapp/Cider/pipeline?branch=main")
+    if pipelineListResponse.status_code != 200:
+        raise Exception(f"[ERROR] CircleCI Pipelines List API returned status: {pipelineListResponse.status_code}")
     
-def github_json():
-    response = requests.get("https://api.github.com/repos/ciderapp/cider-releases/releases?per_page=100")
-    if response.status_code != 200:
-        raise Exception(f"[ERROR] GitHub Releases API returned status: {response.status_code}")
-       
-    cider_json = response.json()
+    pipelineID = pipelineListResponse.json()['items'][0]['id']
+    
+    workflowListResponse = requests.get(f"https://circleci.com/api/v2/pipeline/{pipelineID}/workflow")
+    if workflowListResponse.status_code != 200:
+        raise Exception(f"[ERROR] CircleCI Workflows List API returned status: {workflowListResponse.status_code}")
+    
+    workflowID = workflowListResponse.json()['items'][0]['id']
+    
+    jobListResponse = requests.get(f"https://circleci.com/api/v2/workflow/{workflowID}/job")
+    if jobListResponse.status_code != 200:
+        raise Exception(f"[ERROR] CircleCI Jobs List API returned status: {jobListResponse.status_code}")
+    
+    jobNumber = jobListResponse.json()['items'][-1]['job_number']
+    
+    artifactsListResponse = requests.get(f"https://circleci.com/api/v2/project/gh/ciderapp/Cider/{jobNumber}/artifacts")
+    if jobListResponse.status_code != 200:
+        raise Exception(f"[ERROR] CircleCI Artifacts List API returned status: {jobListResponse.status_code}")
+    
+    artifactsJSON = artifactsListResponse.json()
     
     working_dir = os.getcwd()
     with open(f'{working_dir}\Cider.json', 'w', encoding='utf-8') as f:
-        json.dump(cider_json, f, ensure_ascii=False, indent=4)
+        json.dump(artifactsJSON, f, ensure_ascii=False, indent=4)
         f.close()
         
-    this_date = datetime.fromtimestamp(0)
-    latest_date = datetime.fromtimestamp(0)
-    latest_build = False
-    for build in cider_json:
-        if "(main)" in build['name']:
-            this_date = datetime.fromisoformat(build['published_at'][:-1])
-            if this_date >= latest_date: 
-                latest_date = this_date
-                latest_build = build['assets'][3]['browser_download_url']
-                
-    if latest_build == False:
-        raise Exception("[ERROR] GitHub Releases API returned no valid releases")
-        
+    latest_build = artifactsJSON['items'][3]['url']
     return latest_build, latest_build.split('/')[-1]
 
 def directory_manager():
