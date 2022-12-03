@@ -26,12 +26,14 @@ def updater():
     # os.system(f'{working_dir}\{exe_name} /S')
     os.system(f'powershell -command "Set-Location -Path \'{working_dir}\'; .\{exe_name}')
 
-def circleci_json():
-    pipelineListResponse = requests.get("https://circleci.com/api/v2/project/gh/ciderapp/Cider/pipeline?branch=main")
+def circleci_json(pipelinePageToken:str = ''):
+    pipelinePageToken = '' if pipelinePageToken == '' else f'&page-token={pipelinePageToken}'
+    pipelineListResponse = requests.get(f'https://circleci.com/api/v2/project/gh/ciderapp/Cider/pipeline?branch=main{pipelinePageToken}')
     if pipelineListResponse.status_code != 200:
         raise Exception(f"[ERROR] CircleCI Pipelines List API returned status: {pipelineListResponse.status_code}")
     
-    pipelineList = pipelineListResponse.json()['items']
+    pipelineListResponse = pipelineListResponse.json()
+    pipelineList = pipelineListResponse['items'] if 'items' in pipelineListResponse else []
     for pipeline in pipelineList:
         if pipeline['state'] == 'created':
             
@@ -64,7 +66,11 @@ def circleci_json():
                         latest_build = artifactsJSON['items'][3]['url']
                         return latest_build, latest_build.split('/')[-1]
     
-    raise Exception(f"[ERROR] CircleCI Pipelines List API returned no valid pipelines!")
+    pipelinePageToken = pipelineListResponse['next_page_token'] if 'next_page_token' in pipelineListResponse else ''
+    if len(pipelineList) == 0 or pipelinePageToken == '':
+        raise Exception(f"[ERROR] CircleCI Pipelines List API returned no valid pipelines!")
+    else:
+        return circleci_json(pipelinePageToken=pipelinePageToken)
 
 def directory_manager():
     working_dir = os.getcwd()
